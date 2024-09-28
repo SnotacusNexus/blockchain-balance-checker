@@ -50,6 +50,11 @@ async function isPubAddressInStatus(pubAddress) {
 async function processAddresses() {
     const batchSize = config.batchSize;
     let offset = 0;
+    const oneDay = 1000 * 60 * 60 * 24;
+    //set the end time
+    let endTime = Date.now() + oneDay;
+    // create a call counter variable
+    let callCounter = 0;
 
     while (true) {
         const selectQuery = 'SELECT pubAddress, privateKey FROM randomAddresses WHERE pubAddress NOT IN (SELECT pubAddress FROM status) LIMIT ? OFFSET ?';
@@ -85,9 +90,20 @@ async function processAddresses() {
                     console.log('Sleeping for {sleepTime} ms', { sleepTime: sleepTime });
                     await new Promise(resolve => setTimeout(resolve, sleepTime));
                 }
-
+                callCounter++;
                 lasttime = now;
+                if (callCounter > 100000 && now > endTime) {
+                    //sleep for the rest of time  until endTime
+                    const sleepTime = endTime - now;
+                    console.log('Sleeping for {sleepTime} ms', { sleepTime: sleepTime });
+                    await new Promise(resolve => setTimeout(resolve, sleepTime));
+                    callCounter = 0;
+                    //reset the time
+                    now = Date.now();
+                    //set the end time
+                    endTime = now + oneDay;
 
+                }
             } catch (error) {
                 console.error('Error processing address', { error: error.message, address: address.pubAddress });
             }
